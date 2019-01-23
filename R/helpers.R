@@ -3,11 +3,7 @@ lump_levels <- function(df, cutoff = 0.05, wave_suffix = "_s") {
                                  str_c("^(.*", wave_suffix, ")\\d+$"), "\\1")))
   
   for(name in nms) {
-    # if(name == "avs_s"){
-    #   browser()
-    # }
     message(name)
-    # browser()
     df_sub <- df %>% select(starts_with(name))
     infreq_levels <- map(df_sub, function(x){
       tab <- prop.table(table(x))
@@ -16,7 +12,6 @@ lump_levels <- function(df, cutoff = 0.05, wave_suffix = "_s") {
     
     if(any(map_int(infreq_levels, length) > 0)) {
       lev_to_lump <- reduce(infreq_levels, union)
-      # browser()
       df_sub_new <- df_sub %>% 
         map_dfc(~factor(.x, levels = levels(.x), 
                         labels = c(setdiff(levels(.x), lev_to_lump), 
