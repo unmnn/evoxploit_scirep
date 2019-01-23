@@ -1,3 +1,4 @@
+message("05_run_grid.R")
 # data <- bind_cols(dl$meta$label, dl$data, evo$evo_features)
 # names(data)[1] <- "response"
 # write_rds(file.path(here::here(), "output", "data", .config$data_name))
@@ -6,11 +7,14 @@
 grid$flag_success <- FALSE
 parallelStartSocket(3)
 
+message("STARTING HYPERPARAMETER OPTIMIZATION")
+message("------------------------------------")
+
 for(i in 1:nrow(grid)) { 
   message(paste("Grid id", grid$id[i], "-", grid$algo[i], grid$subset[i], grid$fs[i]))
   try({
     run_classification_folds(data = dl$data,
-                             tbl_label = dl$label,
+                             tbl_label = dl$meta$label,
                              evo = evo,
                              folds = folds,
                              run_id = grid$id[i],
@@ -24,13 +28,15 @@ for(i in 1:nrow(grid)) {
     grid$flag_success[i] <- TRUE
   })
 }
+message("FINISHED HYPERPARAMETER OPTIMIZATION")
+message("------------------------------------")
 
-# browser()
-
+message("STARTING TO LEARN FINAL MODELS")
+message("------------------------------")
 for(i in 1:nrow(grid)) {
   file_path <- file.path(here::here(), "output", "eval", paste0("cv_", .config$data_name, "_", grid$id[i], ".rds"))
   if(file.exists(file_path)) {
-    # extract opt parameter settings
+    # extract optimal parameter settings
     hy <- read_rds(file_path)
     opt_par <- hy %>%
       group_by_at(vars(-c(fold, acc))) %>%
@@ -57,11 +63,14 @@ for(i in 1:nrow(grid)) {
     })
   }
 }
+message("FINISHED TO LEARN FINAL MODELS")
+message("------------------------------")
 
 parallelStop()
 .time_end <- Sys.time()
 (difftime(.time_end, .time_start, units = "auto"))
 
-send_mail(.time_start, .time_end, mean(grid$flag_success))
-
+if(.config$send_mail) send_mail(.time_start, .time_end, mean(grid$flag_success))
 rm(hy, i, opt_par)
+
+message("==========")

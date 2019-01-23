@@ -1,12 +1,14 @@
-folds <- caret::createFolds(dl$label[[1]], 10, returnTrain = TRUE) %>%
+message("02_evo_features.R")
+# Create 10 folds ----
+folds <- caret::createFolds(dl$meta$label[[1]], 10, returnTrain = TRUE) %>%
   map(function(x){
     idx <- vector(mode = "logical", length = nrow(dl$data))
     idx[x] <- TRUE
     return(idx)
   })
 
+# Create evolution features for all 10 folds and for full dataset ----
 file_path <- file.path(here::here(), "output", "evo", paste0("evo_", .config$data_name, ".rds"))
-
 if(!file.exists(file_path)){
   evo <- list()
   evo$all <- Evoxploit$new(data = dl$data, label = dl$meta$label[[1]],
@@ -22,3 +24,5 @@ if(!file.exists(file_path)){
 } else {
   evo <- read_rds(file_path)
 }
+
+message("==========")

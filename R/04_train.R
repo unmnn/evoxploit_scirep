@@ -1,6 +1,6 @@
+message("04_train.R")
+
 run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, hyper, fs, subset, add, overwrite = TRUE) {
-  set.seed(2019)
-  
   file_path <- file.path(here::here(), "output", "eval", paste0("cv_", add, "_", run_id, ".rds"))
   
   if(!overwrite){
@@ -9,7 +9,6 @@ run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, 
       return(invisible())
     }
   }
-  
   
   learner <- makeLearner(paste0("classif.", algo), predict.type = "prob", fix.factors.prediction = TRUE)
   
@@ -26,7 +25,6 @@ run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, 
   
   for(f in 1:length(folds)) {
     message(str_c("fold ", f))
-    # browser()
     if(subset == "original") df_train <- bind_cols(tbl_label, dl$data)
     if(subset == "evo") df_train <- bind_cols(tbl_label, evo$folds[[f]]$evo_features %>% select(-starts_with("desc_")))
     if(subset == "sumstats") df_train <- bind_cols(tbl_label, evo$folds[[f]]$evo_features %>% select(starts_with("desc_")))
@@ -38,7 +36,6 @@ run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, 
     df_train <- remove_high_missingness_ratio_atts(df_train)
     
     if(algo %in% c("xgboost")) {
-      # browser()
       # Apply One Hot Encoding to convert all multinomial factors into binary factors
       df_train <- bind_cols(df_train[1], dummy.data.frame(as.data.frame(df_train[-1]), sep = "=", verbose = FALSE))
       # names(df_train) <- str_replace(names(df_train), "=(.*)", "='\\1'")
@@ -51,18 +48,14 @@ run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, 
     # custom train/test
     rin <- makeFixedHoldoutInstance(train.inds = which(folds[[f]]), test.inds = which(!folds[[f]]), size = nrow(df_train))
     
-    # browser()
     res <- res %>% bind_rows(
       map_dfr(ps, function(y){
-        # browser()
         learner_resample <- setHyperPars(learner, par.vals = y)
         r <- NULL
         try({
           r <- resample(learner_resample, task = task, resampling = rin, measures = measures, models = FALSE, keep.pred = FALSE, show.info = FALSE)
-          # browser()
           parms <- unnest(spread(enframe(y), name, value))
         })
-        # browser()
         if(!is.null(r)) {
           return(tibble(fold = f) %>%
                    bind_cols(tibble(acc = r$measures.test["acc"][[1]])) %>%
@@ -74,15 +67,12 @@ run_classification_folds <- function(data, tbl_label, evo, folds, run_id, algo, 
     )
   }
   
-  # browser()
-  
   if(!dir.exists(dirname(file_path))) dir.create(dirname(file_path), recursive = TRUE, showWarnings = FALSE)
   write_rds(res, file_path)
   return(invisible())
 }
 
 run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, add, overwrite = TRUE) {
-  set.seed(2019)
   
   file_path <- file.path(here::here(), "output", "models", paste0("opt_", add, "_", run_id, ".rds"))
   
@@ -107,7 +97,6 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
   
   for(f in 1:length(folds)) {
     message(str_c("fold ", f))
-    # browser()
     if(subset == "original") df_train <- bind_cols(tbl_label, dl$data)
     if(subset == "evo") df_train <- bind_cols(tbl_label, evo$folds[[f]]$evo_features %>% select(-starts_with("desc_")))
     if(subset == "sumstats") df_train <- bind_cols(tbl_label, evo$folds[[f]]$evo_features %>% select(starts_with("desc_")))
@@ -119,7 +108,6 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
     df_train <- remove_high_missingness_ratio_atts(df_train)
     
     if(algo %in% c("xgboost")) {
-      # browser()
       # Apply One Hot Encoding to convert all multinomial factors into binary factors
       df_train <- bind_cols(df_train[1], dummy.data.frame(as.data.frame(df_train[-1]), sep = "=", verbose = FALSE))
       # names(df_train) <- str_replace(names(df_train), "=(.*)", "='\\1'")
@@ -127,13 +115,10 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
       
     }
     
-    # browser()
     task <- makeClassifTask(data = as.data.frame(df_train), target = "response")
     
     # custom train/test
     rin <- makeFixedHoldoutInstance(train.inds = which(folds[[f]]), test.inds = which(!folds[[f]]), size = nrow(df_train))
-    
-    # browser()
     
     r <- NULL
     try({
@@ -151,7 +136,6 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
   }
   
   # train on full training set
-  
   if(subset == "original") df_train <- bind_cols(tbl_label, dl$data)
   if(subset == "evo") df_train <- bind_cols(tbl_label, evo$all$evo_features %>% select(-starts_with("desc_")))
   if(subset == "sumstats") df_train <- bind_cols(tbl_label, evo$all$evo_features %>% select(starts_with("desc_")))
@@ -163,15 +147,12 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
   df_train <- remove_high_missingness_ratio_atts(df_train)
   
   if(algo %in% c("xgboost")) {
-    # browser()
     # Apply One Hot Encoding to convert all multinomial factors into binary factors
     df_train <- bind_cols(df_train[1], dummy.data.frame(as.data.frame(df_train[-1]), sep = "=", verbose = FALSE))
     # names(df_train) <- str_replace(names(df_train), "=(.*)", "='\\1'")
     df_train <- janitor::clean_names(df_train)
     
   }
-  
-  # browser()
   task <- makeClassifTask(data = as.data.frame(df_train), target = "response")
   
   model <- NULL
@@ -181,3 +162,5 @@ run_opt <- function(data, tbl_label, evo, folds, run_id, algo, ps, fs, subset, a
   write_rds(list(cv = res, model = model), file_path)
   return(invisible())
 }
+
+message("==========")
